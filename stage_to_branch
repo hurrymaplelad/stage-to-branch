@@ -48,6 +48,7 @@ if ! git show-ref -q --heads "$RELEASE_BRANCH"; then
   git commit --allow-empty -m"Seed $RELEASE_BRANCH branch"
   git commit --allow-empty -m"temp wipe"
 else 
+  git switch "$RELEASE_BRANCH"
   # Wipe the release branch to remove any files that weren't regenerated
   git ls-files -z | xargs -0 rm -f
   git add .
