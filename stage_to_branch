@@ -39,7 +39,7 @@ if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH"; then
   git fetch origin "$RELEASE_BRANCH"
   # Check it out locally in case we haven't already
   git switch "$RELEASE_BRANCH" || git switch -c "$RELEASE_BRANCH" origin/"$RELEASE_BRANCH"
-  git pull origin "$RELEASE_BRANCH"
+  git pull --rebase -Xtheirs origin "$RELEASE_BRANCH"
 fi
 # Check for local release branch
 if ! git show-ref -q --heads "$RELEASE_BRANCH"; then
