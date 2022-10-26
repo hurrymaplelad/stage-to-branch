@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Stage Branch: build the npm package from the current branch 
+#                and stage it to the `release` branch. 
+#                Does not commit.
+
+# exit when any command fails
+set -e
+# Best effort consistent working directory.
+# Don't run this from another repo!
+cd "$(git rev-parse --show-toplevel)"
+
+TEMP_BRANCH=temp
+RELEASE_BRANCH=release
+RELEASE_DIR=npm
+
+# Clean temp branch
+git branch -D "$TEMP_BRANCH" || echo "ignoring"
+# Intentionally use checkout instead of switch to keep main branch files around
+git checkout --orphan "$TEMP_BRANCH"
+# Unstage main branch files
+git reset
+# stage the files we want to keep
+git add -f "$RELEASE_DIR" 
+# delete everything else
+git clean -fd  
+# unstage the keepers
+git reset      
+# promote them out of the npm/ dir 
+mv "$RELEASE_DIR"/* .  
+rm -r "$RELEASE_DIR"
+# restage them at the root
+git add .
+git commit -am"temp add"
+# Make sure we have the latest release branch
+git fetch origin "$RELEASE_BRANCH" || echo "ignoring"
+# Create release branch if it doesnt exist
+git switch --orphan release || echo "ignoring"
+git switch "$RELEASE_BRANCH"
+git pull origin "$RELEASE_BRANCH" || echo "ignoring"
+git ls-files -z | xargs -0 rm -f
+git add .
+git commit -am"temp wipe"
+# rebase the clean commit onto this one
+git switch "$TEMP_BRANCH"
+git rebase -Xtheirs "$RELEASE_BRANCH"
+# git the rebased changed onto the release branch
+git switch "$RELEASE_BRANCH" 
+git merge "$TEMP_BRANCH" 
+# squash the temp commits into the staging area
+git reset --soft HEAD~2

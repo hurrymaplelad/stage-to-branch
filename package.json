@@ -1,0 +1,13 @@
+{
+  "name": "@hmlad/stage-to-branch",
+  "version": "0.0.0",
+  "description": "Stage built assets on an isolated git branch",
+  "bin": "stage_to_branch",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hurrymaplelad/stage-to-branch.git"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/hurrymaplelad/stage-to-branch#readme"
+}
