@@ -20,32 +20,44 @@ git branch -D "$TEMP_BRANCH" || echo "ignoring"
 git checkout --orphan "$TEMP_BRANCH"
 # Unstage main branch files
 git reset
-# stage the files we want to keep
+# Stage the files we want to keep
 git add -f "$RELEASE_DIR" 
-# delete everything else
+# Delete everything else
 git clean -fd  
-# unstage the keepers
+# Unstage the keepers
 git reset      
-# promote them out of the npm/ dir 
+# Promote them out of the npm/ dir 
 mv "$RELEASE_DIR"/* .  
 rm -r "$RELEASE_DIR"
-# restage them at the root
+# Restage them at the root
 git add .
 git commit -am"temp add"
-# Make sure we have the latest release branch
-git fetch origin "$RELEASE_BRANCH" || echo "ignoring"
-# Create release branch if it doesnt exist
-git switch --orphan release || echo "ignoring"
-git switch "$RELEASE_BRANCH"
-git pull origin "$RELEASE_BRANCH" || echo "ignoring"
-git ls-files -z | xargs -0 rm -f
-git add .
-git commit -am"temp wipe"
-# rebase the clean commit onto this one
+
+# Check for remote release branch
+if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH"; then 
+  # Make sure we have the latest release branch
+  git fetch origin "$RELEASE_BRANCH"
+  # Check it out locally in case we haven't already
+  git switch "$RELEASE_BRANCH" || git switch -c "$RELEASE_BRANCH" origin/"$RELEASE_BRANCH"
+  git pull origin "$RELEASE_BRANCH"
+fi
+# Check for local release branch
+if ! git show-ref -q --heads "$RELEASE_BRANCH"; then
+  # New branch
+  git switch --orphan "$RELEASE_BRANCH"
+  git commit --allow-empty -m"Seed $RELEASE_BRANCH branch"
+  git commit --allow-empty -m"temp wipe"
+else 
+  # Wipe the release branch to remove any files that weren't regenerated
+  git ls-files -z | xargs -0 rm -f
+  git add .
+  git commit -am"temp wipe";
+fi
+# Rebase the clean commit onto this one
 git switch "$TEMP_BRANCH"
 git rebase -Xtheirs "$RELEASE_BRANCH"
-# git the rebased changed onto the release branch
+# Get the rebased changed onto the release branch
 git switch "$RELEASE_BRANCH" 
 git merge "$TEMP_BRANCH" 
-# squash the temp commits into the staging area
+# Squash the temp commits into the staging area
 git reset --soft HEAD~2

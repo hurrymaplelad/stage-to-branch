@@ -3,11 +3,16 @@
   "version": "0.0.0",
   "description": "Stage built assets on an isolated git branch",
   "bin": "stage_to_branch",
-  "scripts": {},
+  "scripts": {
+    "test": "npx bats tests/*.bats"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hurrymaplelad/stage-to-branch.git"
   },
   "license": "MIT",
-  "homepage": "https://github.com/hurrymaplelad/stage-to-branch#readme"
+  "homepage": "https://github.com/hurrymaplelad/stage-to-branch#readme",
+  "devDependencies": {
+    "bats": "^1.8.2"
+  }
 }
