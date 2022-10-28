@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "Stage built assets on an isolated git branch",
   "bin": "stage_to_branch",
+  "files": ["stage_to_branch"],
   "scripts": {
     "test": "npx bats tests/*.bats"
   },
