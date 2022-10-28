@@ -18,6 +18,7 @@ setup() {
 @test "Creates a release branch if there isn't one" {
   # Creates the release branch if it doesn't exist
   $ROOT/stage_to_branch
+  cd $RELEASE_DIR
   BRANCH="$(git rev-parse --abbrev-ref HEAD)"
   [ $BRANCH == "release" ]
   # Wipes the non-release files from the release branch
@@ -28,11 +29,16 @@ setup() {
 @test "Appends to a local release branch" {
   # Create the branch the first time
   $ROOT/stage_to_branch
+  cd $RELEASE_DIR
   git commit -am"first release"
+  git push local release
+  cd ..
   git co main
+  rm -rf npm
   mkdir npm
   echo "b" > $RELEASE_DIR/b.min.txt
   $ROOT/stage_to_branch
+  cd $RELEASE_DIR
   # We're addind a descendant of the first release
   git log | grep "first release"
   # Wipes previously released files absent in this build
@@ -42,7 +48,10 @@ setup() {
 
 @test "Checks out a remote-only release branch" {
   $ROOT/stage_to_branch
+  cd $RELEASE_DIR
   git commit -am"first release"
+  git push local release
+  cd ..
   git clone --branch main . ../downstream
 
   cd ../downstream
@@ -51,6 +60,7 @@ setup() {
   mkdir npm
   echo "b" > $RELEASE_DIR/b.min.txt
   $ROOT/stage_to_branch
+  cd $RELEASE_DIR
   # We pulled the first release
   git log | grep "first release"
   [ -f b.min.txt ]

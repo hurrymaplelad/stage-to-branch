@@ -11,16 +11,17 @@ set -e
 cd "$(git rev-parse --show-toplevel)"
 
 # -t
-TEMP_BRANCH=temp
+TEMP_DIR=__stage_to_branch_temp
 # -b
 RELEASE_BRANCH=release
 # -d
 RELEASE_DIR=npm
 
+
 while getopts "t:b:d:" opt; do
 case ${opt} in
 t )
-TEMP_BRANCH="$OPTARG"
+TEMP_DIR="$OPTARG"
 ;;
 b )
 RELEASE_BRANCH="$OPTARG"
@@ -31,54 +32,51 @@ RELEASE_DIR="$OPTARG"
 esac
 done
 
-echo Staging dir "$RELEASE_DIR" to branch "$RELEASE_BRANCH"
-echo using temporary branch "$TEMP_BRANCH"
+echo Staging dir "'$RELEASE_DIR'" to branch "'$RELEASE_BRANCH'"
+echo using temp directory "'$TEMP_DIR'"
 
-# Clean temp branch
-git branch -D "$TEMP_BRANCH" || echo "ignoring"
-# Intentionally use checkout instead of switch to keep main branch files around
-git checkout --orphan "$TEMP_BRANCH"
-# Unstage main branch files
-git reset
-# Stage the files we want to keep
-git add -f "$RELEASE_DIR" 
-# Delete everything else
-git clean -fd  
-# Unstage the keepers
-git reset      
-# Promote them out of the npm/ dir 
-mv "$RELEASE_DIR"/* .  
-rm -r "$RELEASE_DIR"
-# Restage them at the root
-git add .
-git commit -am"temp add"
+ORIGIN_URL="$(git config --get remote.origin.url)" || echo "no origin"
+LOCAL_URL="$(pwd)"
 
+# Clean the temp dir
+rm -rf $TEMP_DIR || "ignoring"
+git init $TEMP_DIR -b "$RELEASE_BRANCH"
+cd $TEMP_DIR
+git remote add "local" "$LOCAL_URL"
+[ ! -z "$ORIGIN_URL" ] && git remote add origin "$ORIGIN_URL"
 # Check for remote release branch
-if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH"; then 
+if [ ! -z "$ORIGIN_URL" ] && git ls-remote --exit-code --heads origin "$RELEASE_BRANCH"; then 
   # Make sure we have the latest release branch
   git fetch origin "$RELEASE_BRANCH"
   # Check it out locally in case we haven't already
-  git switch "$RELEASE_BRANCH" || git switch -c "$RELEASE_BRANCH" origin/"$RELEASE_BRANCH"
-  git pull --rebase -Xtheirs origin "$RELEASE_BRANCH"
-fi
-# Check for local release branch
-if ! git show-ref -q --heads "$RELEASE_BRANCH"; then
+  git pull origin "$RELEASE_BRANCH"
+elif git ls-remote --exit-code --heads "local" "$RELEASE_BRANCH"; then
+  # Check for local release branch
+  git fetch "local" "$RELEASE_BRANCH"
+  git pull --rebase -Xtheirs "local" "$RELEASE_BRANCH"
+else
   # New branch
   git switch --orphan "$RELEASE_BRANCH"
+fi
+# Wipe the release branch to remove any files that weren't regenerated
+git ls-files -z | xargs -0 rm -f
+git add .
+if ! git commit -am"temp wipe"; then 
   git commit --allow-empty -m"Seed $RELEASE_BRANCH branch"
   git commit --allow-empty -m"temp wipe"
-else 
-  git switch "$RELEASE_BRANCH"
-  # Wipe the release branch to remove any files that weren't regenerated
-  git ls-files -z | xargs -0 rm -f
-  git add .
-  git commit -am"temp wipe";
 fi
-# Rebase the clean commit onto this one
-git switch "$TEMP_BRANCH"
-git rebase -Xtheirs "$RELEASE_BRANCH"
-# Get the rebased changed onto the release branch
-git switch "$RELEASE_BRANCH" 
-git merge "$TEMP_BRANCH" 
+
+cd "../$RELEASE_DIR"
+git init -b "$RELEASE_BRANCH"
+# Setup origins for convenience
+git remote add "local" $LOCAL_URL
+[ ! -z "$ORIGIN_URL" ] && git remote add origin "$ORIGIN_URL"
+# Temp commit to enable rebasing
+git add .
+git commit -am"temp"
+# Rebase the new release commit into this history
+git pull --rebase -Xtheirs "../$TEMP_DIR" "$RELEASE_BRANCH"
 # Squash the temp commits into the staging area
 git reset --soft HEAD~2
+# Clean up the temp dir
+rm -rf "../$TEMP_DIR"
